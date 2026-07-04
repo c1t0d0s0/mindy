@@ -1311,3 +1311,10 @@ window.addEventListener('DOMContentLoaded', () => {
   // Start observing SVG size changes
   resizeObserver.observe(svg);
 });
+
+// Window load event listener to ensure correct initial centering after all styles are loaded
+window.addEventListener('load', () => {
+  isInitialLayout = false;
+  renderMindMap();
+  fitToScreen();
+});
