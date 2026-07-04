@@ -3,13 +3,6 @@
  * Core scripting file managing state, layout, SVG rendering, zoom/pan, import/export
  */
 
-// Global Error Catching for mobile debugging
-window.addEventListener('error', (e) => {
-  const dbErrors = document.getElementById('debug-errors');
-  if (dbErrors) {
-    dbErrors.innerHTML += `<div>ERROR: ${e.message} (${e.filename ? e.filename.split('/').pop() : 'script.js'}:${e.lineno})</div>`;
-  }
-});
 
 // --- Default Data Structure ---
 const DEFAULT_MINDMAP = {
@@ -571,19 +564,6 @@ function updateViewportTransform() {
   
   // Update UI Zoom Level indicator
   document.getElementById('zoom-level').textContent = `${Math.round(scale * 100)}%`;
-  
-  // Update Debug coordinates panel
-  const dbCoords = document.getElementById('debug-coords');
-  if (dbCoords) {
-    dbCoords.textContent = `translateX: ${translateX.toFixed(2)}, translateY: ${translateY.toFixed(2)}, scale: ${scale.toFixed(2)}`;
-  }
-  const dbRect = document.getElementById('debug-rect');
-  if (dbRect) {
-    const r = svg.getBoundingClientRect();
-    const cWidth = canvasContainer ? canvasContainer.clientWidth : 0;
-    const cHeight = canvasContainer ? canvasContainer.clientHeight : 0;
-    dbRect.textContent = `svgRect: ${r.width.toFixed(2)}x${r.height.toFixed(2)} (container: ${cWidth}x${cHeight})`;
-  }
 }
 
 function zoomTo(targetScale, mouseX = null, mouseY = null) {
@@ -1113,8 +1093,8 @@ function setupEventListeners() {
   // Touch Zoom/Pan support for Mobile Devices
   let touchStartDist = 0;
   let touchStartScale = 1;
-  let touchStartX = 0;
-  let touchStartY = 0;
+  let lastTouchCenterX = 0;
+  let lastTouchCenterY = 0;
   let isTouchDragging = false;
 
   svg.addEventListener('touchstart', (e) => {
@@ -1135,8 +1115,8 @@ function setupEventListeners() {
       touchStartScale = scale;
       
       const rect = svg.getBoundingClientRect();
-      touchStartX = ((t1.clientX + t2.clientX) / 2) - rect.left;
-      touchStartY = ((t1.clientY + t2.clientY) / 2) - rect.top;
+      lastTouchCenterX = ((t1.clientX + t2.clientX) / 2) - rect.left;
+      lastTouchCenterY = ((t1.clientY + t2.clientY) / 2) - rect.top;
     }
   }, { passive: true });
 
@@ -1151,10 +1131,34 @@ function setupEventListeners() {
       e.preventDefault(); // Cancel browser-native zoom behavior
       const t1 = e.touches[0];
       const t2 = e.touches[1];
+      const rect = svg.getBoundingClientRect();
+      const cx = ((t1.clientX + t2.clientX) / 2) - rect.left;
+      const cy = ((t1.clientY + t2.clientY) / 2) - rect.top;
+      
       const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
       if (touchStartDist > 0) {
         const factor = dist / touchStartDist;
-        zoomTo(touchStartScale * factor, touchStartX, touchStartY);
+        const targetScale = touchStartScale * factor;
+        
+        // Calculate incremental scaling
+        const oldScale = scale;
+        scale = Math.min(Math.max(0.15, targetScale), 3.0);
+        const scaleFactor = scale / oldScale;
+        
+        // Zoom centered around the current midpoint
+        translateX = cx - (cx - translateX) * scaleFactor;
+        translateY = cy - (cy - translateY) * scaleFactor;
+        
+        // Pan based on pinch center displacement (smooth touch tracking)
+        const dx = cx - lastTouchCenterX;
+        const dy = cy - lastTouchCenterY;
+        translateX += dx;
+        translateY += dy;
+        
+        lastTouchCenterX = cx;
+        lastTouchCenterY = cy;
+        
+        updateViewportTransform();
       }
     }
   }, { passive: false });
@@ -1313,6 +1317,14 @@ function setupEventListeners() {
   helpModal.addEventListener('click', (e) => {
     if (e.target === helpModal) helpModal.classList.remove('open');
   });
+
+  // Disable Safari's default pinch-to-zoom on the document level
+  window.addEventListener('gesturestart', (e) => {
+    e.preventDefault();
+  }, { passive: false });
+  window.addEventListener('gesturechange', (e) => {
+    e.preventDefault();
+  }, { passive: false });
 }
 
 function setupPresetColors(containerId, property) {
