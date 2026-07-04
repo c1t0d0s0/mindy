@@ -590,10 +590,13 @@ function fitToScreen() {
   let minY = Infinity, maxY = -Infinity;
   
   function getBounds(node) {
-    const nMinX = node.x - node.width / 2;
-    const nMaxX = node.x + node.width / 2;
-    const nMinY = node.y - node.height / 2;
-    const nMaxY = node.y + node.height / 2;
+    if (!node || typeof node.x !== 'number' || typeof node.y !== 'number' || isNaN(node.x) || isNaN(node.y)) {
+      return;
+    }
+    const nMinX = node.x - (node.width || 120) / 2;
+    const nMaxX = node.x + (node.width || 120) / 2;
+    const nMinY = node.y - (node.height || 40) / 2;
+    const nMaxY = node.y + (node.height || 40) / 2;
     
     if (nMinX < minX) minX = nMinX;
     if (nMaxX > maxX) maxX = nMaxX;
@@ -607,10 +610,25 @@ function fitToScreen() {
   
   getBounds(mindMapData);
   
+  // Safe fallback if bounds are invalid (e.g. no valid node positions found)
+  if (minX === Infinity || maxX === -Infinity || minY === Infinity || maxY === -Infinity) {
+    translateX = rectW / 2;
+    translateY = rectH / 2;
+    scale = 1.0;
+    updateViewportTransform();
+    return;
+  }
+  
   const mapW = maxX - minX;
   const mapH = maxY - minY;
   
-  if (mapW === 0 || mapH === 0) return;
+  if (mapW <= 0 || mapH <= 0 || isNaN(mapW) || isNaN(mapH)) {
+    translateX = rectW / 2;
+    translateY = rectH / 2;
+    scale = 1.0;
+    updateViewportTransform();
+    return;
+  }
   
   const padding = 60;
   const scaleX = (rectW - padding) / mapW;
@@ -618,6 +636,7 @@ function fitToScreen() {
   
   scale = Math.min(scaleX, scaleY, 1.5); // Don't scale up too much
   scale = Math.max(0.2, scale); // Don't scale down too much
+  if (isNaN(scale)) scale = 1.0;
   
   // Target center coordinate
   const mapCenterX = (minX + maxX) / 2;
@@ -625,6 +644,11 @@ function fitToScreen() {
   
   translateX = rectW / 2 - mapCenterX * scale;
   translateY = rectH / 2 - mapCenterY * scale;
+  
+  if (isNaN(translateX) || isNaN(translateY)) {
+    translateX = rectW / 2;
+    translateY = rectH / 2;
+  }
   
   updateViewportTransform();
 }
