@@ -3,6 +3,14 @@
  * Core scripting file managing state, layout, SVG rendering, zoom/pan, import/export
  */
 
+// Global Error Catching for mobile debugging
+window.addEventListener('error', (e) => {
+  const dbErrors = document.getElementById('debug-errors');
+  if (dbErrors) {
+    dbErrors.innerHTML += `<div>ERROR: ${e.message} (${e.filename ? e.filename.split('/').pop() : 'script.js'}:${e.lineno})</div>`;
+  }
+});
+
 // --- Default Data Structure ---
 const DEFAULT_MINDMAP = {
   id: "root",
@@ -563,6 +571,19 @@ function updateViewportTransform() {
   
   // Update UI Zoom Level indicator
   document.getElementById('zoom-level').textContent = `${Math.round(scale * 100)}%`;
+  
+  // Update Debug coordinates panel
+  const dbCoords = document.getElementById('debug-coords');
+  if (dbCoords) {
+    dbCoords.textContent = `translateX: ${translateX.toFixed(2)}, translateY: ${translateY.toFixed(2)}, scale: ${scale.toFixed(2)}`;
+  }
+  const dbRect = document.getElementById('debug-rect');
+  if (dbRect) {
+    const r = svg.getBoundingClientRect();
+    const cWidth = canvasContainer ? canvasContainer.clientWidth : 0;
+    const cHeight = canvasContainer ? canvasContainer.clientHeight : 0;
+    dbRect.textContent = `svgRect: ${r.width.toFixed(2)}x${r.height.toFixed(2)} (container: ${cWidth}x${cHeight})`;
+  }
 }
 
 function zoomTo(targetScale, mouseX = null, mouseY = null) {
