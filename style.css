@@ -271,15 +271,15 @@ html, body {
   min-height: 38px;
   white-space: pre;
   word-break: keep-all;
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), 
-              border-color 0.2s ease, 
-              box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, 
+              box-shadow 0.2s ease,
+              background-color 0.2s ease;
   user-select: none;
 }
 
 .mindmap-node:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  border-color: rgba(137, 180, 250, 0.5);
 }
 
 /* Specific styling for hierarchy levels */
@@ -302,9 +302,8 @@ html, body {
 /* Selected Node State */
 .mindmap-node.active {
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 2px rgba(137, 180, 250, 0.2), 
-              0 0 16px rgba(137, 180, 250, 0.4);
-  transform: scale(1.03);
+  box-shadow: 0 0 0 3px rgba(137, 180, 250, 0.35), 
+              0 0 16px rgba(137, 180, 250, 0.5);
 }
 
 /* Content Editable state */
@@ -312,8 +311,7 @@ html, body {
   cursor: text;
   background-color: var(--bg-element) !important;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(137, 180, 250, 0.4);
-  transform: scale(1.03);
+  box-shadow: 0 0 0 4px rgba(137, 180, 250, 0.5);
   user-select: text;
   -webkit-user-select: text;
 }
