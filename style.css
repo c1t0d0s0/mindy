@@ -27,7 +27,7 @@
   padding: 0;
 }
 
-body {
+html, body {
   font-family: var(--font-family);
   background-color: var(--bg-base);
   color: var(--text-main);
@@ -36,6 +36,8 @@ body {
   height: 100dvh;
   width: 100vw;
   width: 100dvw;
+  margin: 0;
+  padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -49,6 +51,7 @@ body {
   width: 100vw;
   width: 100dvw;
   position: relative;
+  overflow: hidden;
 }
 
 /* Header */
@@ -212,7 +215,6 @@ body {
   position: relative;
   background-color: var(--bg-base);
   cursor: grab;
-  touch-action: none;
 }
 
 .canvas-container:active {
@@ -226,7 +228,6 @@ body {
   display: block;
   user-select: none;
   -webkit-user-select: none;
-  touch-action: none;
 }
 
 /* Background grid */
