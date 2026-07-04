@@ -34,8 +34,8 @@ html, body {
   overflow: hidden;
   height: 100vh;
   height: 100dvh;
-  width: 100vw;
-  width: 100dvw;
+  width: 100%;
+  max-width: 100%;
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
@@ -48,8 +48,8 @@ html, body {
   flex-direction: column;
   height: 100vh;
   height: 100dvh;
-  width: 100vw;
-  width: 100dvw;
+  width: 100%;
+  max-width: 100%;
   position: relative;
   overflow: hidden;
 }
@@ -771,6 +771,8 @@ kbd {
   /* Sidebar adjustments for mobile */
   .property-sidebar {
     width: 100%;
+    left: 0;
+    right: 0;
     height: 45vh;
     height: 45dvh;
     bottom: 0;
@@ -819,6 +821,14 @@ kbd {
   /* Adjust canvas height when sidebar open on mobile */
   .app-workspace {
     flex-direction: column;
+  }
+
+  /* Prevent Safari input focus auto-zoom by forcing >= 16px font-size */
+  .node-text-input {
+    font-size: 16px !important;
+  }
+  .mindmap-node.editing {
+    font-size: 16px !important;
   }
 }
 
