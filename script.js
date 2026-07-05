@@ -1416,3 +1416,11 @@ window.addEventListener('load', () => {
   renderMindMap();
   fitToScreen();
 });
+
+// Lock window scroll position permanently to prevent iOS Safari auto-scroll on element updates
+window.addEventListener('scroll', () => {
+  if (window.scrollX !== 0 || window.scrollY !== 0) {
+    window.scrollTo(0, 0);
+  }
+}, { passive: true });
+
