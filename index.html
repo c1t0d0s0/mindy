@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no">
   <title>Mindy - Elegant Mind Mapping</title>
-  <link class="cache-buster" rel="stylesheet" href="style.css?v=20260705-9">
+  <link class="cache-buster" rel="stylesheet" href="style.css?v=20260705-10">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -275,6 +275,25 @@
     </div>
   </div>
 
-  <script class="cache-buster" src="script.js?v=20260705-9"></script>
+  <!-- Confirm Modal -->
+  <div class="modal-overlay" id="confirm-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>新規作成の確認</h2>
+        <button class="modal-close-btn" id="btn-close-confirm"><span class="material-icons-round">close</span></button>
+      </div>
+      <div class="modal-body" style="padding: 20px;">
+        <p style="margin-bottom: 20px; font-size: 14px; line-height: 1.6; color: var(--text-main);">
+          現在編集中のマインドマップは破棄されます。<br>本当に新しく作成しますか？
+        </p>
+        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+          <button class="action-btn" id="btn-confirm-cancel">キャンセル</button>
+          <button class="action-btn primary" id="btn-confirm-ok">新規作成</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script class="cache-buster" src="script.js?v=20260705-10"></script>
 </body>
 </html>

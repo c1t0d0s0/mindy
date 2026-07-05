@@ -1235,14 +1235,31 @@ function setupEventListeners() {
   });
 
   // Top Action Buttons
+  const confirmModal = document.getElementById('confirm-modal');
+
   document.getElementById('btn-new').addEventListener('click', () => {
-    if (confirm("現在編集中のマインドマップは破棄されます。新しく作成しますか？")) {
-      mindMapData = JSON.parse(JSON.stringify(DEFAULT_MINDMAP));
-      activeNodeId = 'root';
-      saveToLocalStorage();
-      renderMindMap();
-      centerMindMap();
-    }
+    confirmModal.classList.add('open');
+  });
+
+  document.getElementById('btn-close-confirm').addEventListener('click', () => {
+    confirmModal.classList.remove('open');
+  });
+
+  document.getElementById('btn-confirm-cancel').addEventListener('click', () => {
+    confirmModal.classList.remove('open');
+  });
+
+  confirmModal.addEventListener('click', (e) => {
+    if (e.target === confirmModal) confirmModal.classList.remove('open');
+  });
+
+  document.getElementById('btn-confirm-ok').addEventListener('click', () => {
+    confirmModal.classList.remove('open');
+    mindMapData = JSON.parse(JSON.stringify(DEFAULT_MINDMAP));
+    activeNodeId = 'root';
+    saveToLocalStorage();
+    renderMindMap();
+    centerMindMap();
   });
 
   document.getElementById('btn-import').addEventListener('click', () => fileInput.click());
