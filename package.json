@@ -1,0 +1,12 @@
+{
+  "name": "mindy",
+  "version": "1.0.0",
+  "description": "Elegant Mind Mapping App",
+  "main": "index.html",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}
