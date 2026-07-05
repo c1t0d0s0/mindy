@@ -547,23 +547,49 @@ function addNewSibling(nodeId = activeNodeId) {
   setTimeout(() => startEditing(newNode.id), 50);
 }
 
+let confirmCallback = null;
+
+function showConfirm(title, message, okText, onConfirm, isAlert = false) {
+  const confirmModal = document.getElementById('confirm-modal');
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-message').innerHTML = message;
+  
+  const btnOk = document.getElementById('btn-confirm-ok');
+  btnOk.textContent = okText;
+  
+  const btnCancel = document.getElementById('btn-confirm-cancel');
+  if (isAlert) {
+    btnCancel.style.display = 'none';
+  } else {
+    btnCancel.style.display = 'block';
+  }
+  
+  confirmCallback = onConfirm;
+  confirmModal.classList.add('open');
+}
+
 function deleteNode(nodeId = activeNodeId) {
   if (nodeId === 'root') {
-    alert("セントラルテーマ（ルート）は削除できません。");
+    showConfirm("削除できません", "セントラルテーマ（ルート）は削除できません。", "OK", null, true);
     return;
   }
 
   const parentNode = findParentNode(mindMapData, nodeId);
   if (!parentNode) return;
 
-  if (confirm("このノードとそのすべての子ノードを削除しますか？")) {
-    parentNode.children = parentNode.children.filter(c => c.id !== nodeId);
-    saveToLocalStorage();
-    
-    // Select parent after deletion
-    selectNode(parentNode.id);
-    renderMindMap();
-  }
+  showConfirm(
+    "ノードの削除",
+    "このノードとそのすべての子ノードを削除しますか？",
+    "削除する",
+    () => {
+      parentNode.children = parentNode.children.filter(c => c.id !== nodeId);
+      saveToLocalStorage();
+      
+      // Select parent after deletion
+      selectNode(parentNode.id);
+      renderMindMap();
+    }
+  );
 }
 
 // --- Zoom & Pan Management ---
@@ -1238,7 +1264,18 @@ function setupEventListeners() {
   const confirmModal = document.getElementById('confirm-modal');
 
   document.getElementById('btn-new').addEventListener('click', () => {
-    confirmModal.classList.add('open');
+    showConfirm(
+      "新規作成の確認",
+      "現在編集中のマインドマップは破棄されます。<br>本当に新しく作成しますか？",
+      "新規作成",
+      () => {
+        mindMapData = JSON.parse(JSON.stringify(DEFAULT_MINDMAP));
+        activeNodeId = 'root';
+        saveToLocalStorage();
+        renderMindMap();
+        centerMindMap();
+      }
+    );
   });
 
   document.getElementById('btn-close-confirm').addEventListener('click', () => {
@@ -1255,11 +1292,10 @@ function setupEventListeners() {
 
   document.getElementById('btn-confirm-ok').addEventListener('click', () => {
     confirmModal.classList.remove('open');
-    mindMapData = JSON.parse(JSON.stringify(DEFAULT_MINDMAP));
-    activeNodeId = 'root';
-    saveToLocalStorage();
-    renderMindMap();
-    centerMindMap();
+    if (confirmCallback) {
+      confirmCallback();
+      confirmCallback = null;
+    }
   });
 
   document.getElementById('btn-import').addEventListener('click', () => fileInput.click());
