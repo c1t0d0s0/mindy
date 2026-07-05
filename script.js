@@ -1417,10 +1417,22 @@ window.addEventListener('load', () => {
   fitToScreen();
 });
 
-// Lock window scroll position permanently to prevent iOS Safari auto-scroll on element updates
-window.addEventListener('scroll', () => {
-  if (window.scrollX !== 0 || window.scrollY !== 0) {
-    window.scrollTo(0, 0);
+// Lock window and sub-container scroll positions permanently to prevent iOS Safari auto-scroll on element updates
+window.addEventListener('scroll', (e) => {
+  if (e.target && e.target !== document && e.target !== window) {
+    if (e.target.scrollLeft !== 0 || e.target.scrollTop !== 0) {
+      const isSidebar = e.target.classList.contains('sidebar-content') || e.target.closest('.sidebar-content');
+      const isModal = e.target.classList.contains('modal-body') || e.target.closest('.modal-body');
+      if (!isSidebar && !isModal) {
+        e.target.scrollLeft = 0;
+        e.target.scrollTop = 0;
+      }
+    }
+  } else {
+    if (window.scrollX !== 0 || window.scrollY !== 0) {
+      window.scrollTo(0, 0);
+    }
   }
-}, { passive: true });
+}, { capture: true, passive: true });
+
 
