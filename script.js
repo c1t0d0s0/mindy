@@ -1341,7 +1341,8 @@ function setupEventListeners() {
   // Prevent page bounce and horizontal viewport scroll on iOS Safari
   document.addEventListener('touchmove', (e) => {
     const isScrollable = e.target.closest('.sidebar-content') || e.target.closest('.modal-body');
-    if (!isScrollable) {
+    const isInteractive = e.target.closest('button') || e.target.closest('a') || e.target.closest('input') || e.target.closest('.app-header');
+    if (!isScrollable && !isInteractive) {
       e.preventDefault();
     }
   }, { passive: false });
