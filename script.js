@@ -715,9 +715,12 @@ function fitToScreen() {
 
 // Export mind map data as JSON
 function exportJSON() {
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(mindMapData, null, 2));
+  const jsonStr = JSON.stringify(mindMapData, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  
   const downloadAnchor = document.createElement('a');
-  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("href", url);
   
   // Format filename with timestamp
   const date = new Date();
@@ -726,7 +729,11 @@ function exportJSON() {
   
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
-  downloadAnchor.remove();
+  
+  setTimeout(() => {
+    document.body.removeChild(downloadAnchor);
+    URL.revokeObjectURL(url);
+  }, 250);
 }
 
 // Import JSON data file
@@ -919,8 +926,11 @@ function exportSVG() {
   downloadAnchor.download = 'mindy_mindmap.svg';
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
-  downloadAnchor.remove();
-  URL.revokeObjectURL(url);
+  
+  setTimeout(() => {
+    document.body.removeChild(downloadAnchor);
+    URL.revokeObjectURL(url);
+  }, 250);
 }
 
 // Export as PNG
@@ -950,15 +960,22 @@ function exportPNG() {
     // Draw image
     ctx.drawImage(img, 0, 0, width, height);
     
-    // Get PNG URL
-    const pngUrl = canvas.toDataURL('image/png');
-    
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.href = pngUrl;
-    downloadAnchor.download = 'mindy_mindmap.png';
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    // Get PNG Blob and trigger download
+    canvas.toBlob((pngBlob) => {
+      if (!pngBlob) return;
+      const pngUrl = URL.createObjectURL(pngBlob);
+      
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.href = pngUrl;
+      downloadAnchor.download = 'mindy_mindmap.png';
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(downloadAnchor);
+        URL.revokeObjectURL(pngUrl);
+      }, 250);
+    }, 'image/png');
     
     URL.revokeObjectURL(url);
   };
@@ -1311,8 +1328,10 @@ function setupEventListeners() {
   });
   
   // Close dropdown on click outside
-  window.addEventListener('click', () => {
-    document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
+  window.addEventListener('click', (e) => {
+    if (!e.target.closest('#btn-export-image')) {
+      document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
+    }
   });
 
   document.getElementById('btn-export-png').addEventListener('click', exportPNG);
