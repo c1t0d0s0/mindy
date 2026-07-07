@@ -1,156 +1,155 @@
 # Mindy - Mind Mapping Tool
 
-Mindy は、黒を基調としたシンプルなデザインのマインドマップ作成用シングルページWebアプリケーションです。  
-直感的かつ高速な操作で、思考の整理やアイデアのブレインストーミングをサポートします。
+Mindy is a simple and elegant single-page web application for mind mapping, styled with a sleek dark theme.  
+It supports organizing thoughts and brainstorming ideas with intuitive and lightning-fast controls.
 
 ---
 
-## 🚀 主な機能
+## 🚀 Key Features
 
-1. **直感的なノード作成 & 編集**
-   * マウス操作はもちろん、キーボードだけで爆速でマインドマップを展開可能.
-   * テキストの途中で手動改行（`Shift + Enter`）が可能。
-   * 入力された文字数に合わせて、ノードの横幅が自動的に伸びる「横長長方形フィット」設計。
+1. **Intuitive Node Creation & Editing**
+   * Expand your mind map rapidly using just your keyboard or mouse.
+   * Supports manual line breaks (`Shift + Enter`) inside node texts.
+   * Auto-expanding "horizontal rectangle" node width matches your text length naturally.
 
-2. **右クリックコンテキストメニュー**
-   * 各ノードを右クリックすると、「子ノード追加」「同階層追加」「ノード削除」のクイックメニューがその場に表示されます。
-   * ルートノード右クリック時は、無効なアクション（同階層追加、削除）が自動的に非表示になります。
+2. **Right-Click Context Menu**
+   * Right-click any node to open a quick context menu for "Add Child", "Add Sibling", and "Delete Node".
+   * Invalid actions (like Add Sibling or Delete Node on the Root node) are automatically hidden.
 
-3. **スムーズなキャンバス操作**
-   * マウスドラッグで無限のキャンバスをスクロール。
-   * マウスホイールでカーソル位置を中心に拡大・縮小（ズーム）。
-   * スマートフォンやタブレットでの**ピンチズーム**および**シングルタッチドラッグ**に対応。
+3. **Smooth Canvas Navigation**
+   * Click and drag the background to pan the infinite canvas.
+   * Scroll mouse wheel to zoom in/out relative to the cursor position.
+   * Full **pinch-to-zoom** and **single-touch panning** support for mobile/tablet devices.
 
-4. **ドラッグ＆ドロップによる階層移動 (D&D)**
-   * ノード（ルート以外）をドラッグして、別のノードに重ねることで直感的に子ノードとして階層を移動（再編成）可能。
-   * 自分自身や自分の配下のノードへのドロップを防ぐ「循環参照防止」ロジック付き。
+4. **Drag & Drop for Re-parenting (D&D)**
+   * Move any node (except root) and its subtree to a new parent by simply dragging and dropping it.
+   * Prevent circular reference crashes with built-in "ancestor detection" logic.
 
-5. **スタイルのカスタマイズ**
-   * 各ノードごとに「背景の色」「テキストの色」「接続線（ブランチ）の色」を自由に変更可能。
-   * ノードの枠線を非表示にする **「枠なし (テキストのみ)」** スタイルを搭載。
-   * 枠なしに設定した後は、新しく追加されるノードにも自動で枠なしスタイルが引き継がれるスマート機能を実装。
+5. **Style Customization**
+   * Adjust background color, text color, and branch color for each node.
+   * Toggle **"Borderless (Text Only)"** style for cleaner layouts.
+   * Once enabled, subsequent new child/sibling nodes automatically inherit the borderless style.
 
-6. **ローカル保存 (再編集機能) & 自動保存**
-   * マインドマップ全体のデータを `.json` ファイルとしてローカルに保存（エクスポート）。
-   * 保存したデータを読み込む（インポート）ことで、いつでも途中から編集作業を再開。
-   * 編集内容はブラウザの `localStorage` に自動保存されるため、不意のリロードでもデータは失われません。
+6. **Local JSON Export / Import & Auto-Save**
+   * Export the entire mind map as a `.json` file to your local machine.
+   * Import saved files to resume editing where you left off.
+   * All progress is auto-saved to browser `localStorage` to prevent data loss.
 
-7. **画像出力 (PNG / SVG)**
-   * 作成したマインドマップを `SVG` ベクター形式、または `PNG` 画像形式でダウンロード。
-   * セキュリティ制限（Tainted Canvasエラー）を完全にクリアする「ネイティブSVG変換ロジック」を搭載しており、すべてのブラウザで高解像度かつ安全に出力できます。
+7. **High-Quality Image Export (PNG / SVG)**
+   * Download the mind map in standard `SVG` vector format or `PNG` raster image.
+   * Security constraints (Tainted Canvas error) are completely bypassed using a native SVG element conversion engine, rendering safe exports in any browser.
 
 ---
 
-## ⌨️ キーボードショートカット
+## ⌨️ Keyboard Shortcuts
 
-キャンバスの操作性と作成スピード向上のため、豊富なショートカットを標準搭載しています。
+Speed up your workflow using these built-in keyboard shortcuts:
 
-| キー | アクション |
+| Key | Action |
 | :--- | :--- |
-| **`Tab`** | 選択したノードに **子ノード** を追加 |
-| **`Enter`** | 選択したノードと **同階層（兄弟）のノード** を追加（ルートノード時は子ノード） |
-| **`Delete` / `Backspace`** | 選択したノードとその子孫を **削除**（※ルートノードは削除不可） |
-| **`Space` / `F2`** | 選択したノードの **テキスト編集を開始** |
-| **`Enter`** (編集時) | 編集内容を確定（フォーカスアウトでも確定されます） |
-| **`Shift + Enter`** (編集時) | ノード内のテキストを **改行** |
-| **`Esc`** | 編集のキャンセル、またはノードの選択解除 |
-| **`↑` `↓` `←` `→`** | マインドマップのノード間を選択移動 |
-
+| **`Tab`** | Add a **child node** to the selected node |
+| **`Enter`** | Add a **sibling node** (or a child if root is selected) |
+| **`Delete` / `Backspace`** | **Delete** the selected node and its subtree (Root cannot be deleted) |
+| **`Space` / `F2`** | **Start editing** the text of the selected node |
+| **`Enter`** (Editing) | Save and **commit editing** (also triggered on focus loss) |
+| **`Shift + Enter`** (Editing) | Insert a **manual line break** |
+| **`Esc`** | Cancel editing, or deselect all nodes |
+| **`↑` `↓` `←` `→`** | Navigate selection between nodes |
 
 ---
 
-## 🖥️ デスクトップアプリとしてのビルド (Tauri)
+## 🖥️ Building as a Desktop App (Tauri)
 
-本アプリは [Tauri](https://tauri.app/) を使用して、Windows および macOS 用のスタンドアロンデスクトップアプリケーションとしてパッケージングすることができます。
+This application can be packaged as a standalone desktop app for Windows and macOS using [Tauri](https://tauri.app/).
 
-### ローカル開発 & ビルド
-1. **依存関係のインストール:**
+### Local Development & Build
+1. **Install dependencies:**
    ```bash
    npm install
    ```
-2. **開発モードでの起動:**
+2. **Run in development mode:**
    ```bash
    npm run tauri dev
    ```
-3. **本番リリース用パッケージのビルド:**
+3. **Build the production release package:**
    ```bash
    npm run tauri build
    ```
 
-## 📱 モバイルアプリとしてのビルド (Tauri Mobile)
+## 📱 Building as a Mobile App (Tauri Mobile)
 
-Tauri v2 のモバイルサポート機能を使用して、Android および iOS 用のネイティブアプリとしてパッケージングすることができます。
+Using Tauri v2's mobile support, you can package this application for Android and iOS.
 
-### 1. 共通の準備（Rust ターゲットの追加）
-それぞれのプラットフォーム向けのクロスコンパイル用ターゲットを Rust に追加します。
+### 1. Common Setup (Add Rust Targets)
+Add cross-compilation targets for your target platforms.
 
 ```bash
-# Android 用ターゲットの追加
+# Add targets for Android
 rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
-# iOS 用ターゲットの追加（macOS環境のみ）
+# Add targets for iOS (macOS host only)
 rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim
 ```
 
-### 2. Android アプリのビルド手順
-#### 前提条件:
-* **Android Studio** がインストールされていること。
-* **Android SDK** および **NDK** がインストールされ、環境変数 `ANDROID_HOME` と `NDK_HOME` が正しく設定されていること。
-* **JDK 17** がインストールされ、パスが通っていること。
+### 2. Android Build Instructions
+#### Prerequisites:
+* **Android Studio** installed on your system.
+* **Android SDK** and **NDK** installed with `ANDROID_HOME` and `NDK_HOME` environment variables set correctly.
+* **JDK 17** installed and added to your path.
 
-#### 開発とビルド:
+#### Run & Build:
 ```bash
-# 初回のみ：Android 用ファイルの生成と初期化
+# Generate mobile source files (Run once)
 npx tauri android init
 
-# 開発モードでの起動（エミュレータまたは実機でデバッグ実行）
+# Run in development mode (launches in an emulator or connected device)
 npx tauri android dev
 
-# リリース用パッケージ (APK / AAB) のビルド
+# Build the release bundle (APK / AAB)
 npx tauri android build
 ```
-ビルド成功後、`src-tauri/gen/android/app/build/outputs/apk/release/` などのディレクトリ以下にパッケージが生成されます。
+Once succeeded, your output package is generated under `src-tauri/gen/android/app/build/outputs/apk/release/` or similar directory.
 
-### 3. iOS アプリのビルド手順（macOS のみ）
-#### 前提条件:
-* **macOS** 環境であること。
-* **Xcode**（最新バージョン）がインストールされていること。
-* コマンドラインツール（`xcode-select --install`）が導入済みであること。
+### 3. iOS Build Instructions (macOS Host Only)
+#### Prerequisites:
+* **macOS** operating system.
+* Latest **Xcode** version installed.
+* Xcode Command Line Tools installed via `xcode-select --install`.
 
-#### 開発とビルド:
+#### Run & Build:
 ```bash
-# 初回のみ：iOS 用ファイルの生成と初期化
+# Generate mobile source files (Run once)
 npx tauri ios init
 
-# 開発モードでの起動（iOS シミュレータまたは実機でデバッグ実行）
+# Run in development mode (launches in iOS Simulator or connected device)
 npx tauri ios dev
 
-# リリース用パッケージのビルド
+# Build the release package
 npx tauri ios build
 ```
-ビルドの後半で自動的に Xcode が起動し、署名（Code Signing）とプロビジョニングプロファイルの設定を行った上でアーカイブが生成されます。
+Xcode will open automatically during the build process. Set your Code Signing and Provisioning Profiles to generate the final archive.
 
 ---
 
-### 🍎 macOS で「開発元を検証できないため開けない」場合の回避方法
-GitHub Actions などでビルドされた未署名の macOS アプリ（`.dmg` / `.app`）を実行しようとすると、macOS の Gatekeeper セキュリティ制限により実行がブロックされ、警告画面が表示される場合があります。
+### 🍎 Bypassing macOS "Developer Cannot Be Verified" Gatekeeper Error
+If you download and run an unsigned macOS app (`.dmg` / `.app`), Gatekeeper may block execution.
 
-その場合は、以下のコマンドをターミナルで実行してアプリの隔離属性（Quarantine）を削除することで、直接起動できるようになります。
+You can remove the Quarantine flag by executing this command in the Terminal:
 
 ```bash
-# アプリケーションフォルダに配置した場合の解除コマンド
+# If placed inside the Applications folder:
 xattr -cr /Applications/Mindy.app
 ```
-*(※ アプリを別の場所へインストールしている場合は、`/Applications/Mindy.app` の部分を実際の配置パスに変更してください)*
+*(Replace `/Applications/Mindy.app` with the actual path if installed elsewhere)*
 
 ---
 
-## 📂 ファイル構成
+## 📂 File Structure
 
-プロジェクトは以下のファイルのみで構成される純粋なフロントエンドアプリケーションです。
+This is a clean frontend application composed of the following key files:
 
-* **[index.html](file:///home/jin/work/Google/gemini-cli/mindy/index.html)** ： アプリケーションの骨格（HTML構造）
-* **[style.css](file:///home/jin/work/Google/gemini-cli/mindy/style.css)** ： クールなダークテーマを定義するCSS
-* **[script.js](file:///home/jin/work/Google/gemini-cli/mindy/script.js)** ： キャンバス操作、自動配置、入出力ロジックを含むJavaScript
-* **[README.md](file:///home/jin/work/Google/gemini-cli/mindy/README.md)** ： 本ドキュメント
-
+* **[index.html](file:///home/jin/work/Google/gemini-cli/mindy/index.html)**: Main HTML structure.
+* **[style.css](file:///home/jin/work/Google/gemini-cli/mindy/style.css)**: Neon-dark styled stylesheets.
+* **[script.js](file:///home/jin/work/Google/gemini-cli/mindy/script.js)**: Core logic (layout engine, D&D, zoom/pan, export/import).
+* **[README.md](file:///home/jin/work/Google/gemini-cli/mindy/README.md)**: This document (English).
+* **[README.ja.md](file:///home/jin/work/Google/gemini-cli/mindy/README.ja.md)**: Japanese version of documentation.
