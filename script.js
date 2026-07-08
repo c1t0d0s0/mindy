@@ -66,6 +66,8 @@ const TRANSLATIONS = {
     "ctx-center-view": "中央に戻す",
     "ctx-fit-screen": "全体を表示",
     "ctx-new-map": "新規作成",
+    "btn-layout-mode-title": "配置切り替え (左右均等 / 右側のみ)",
+    "btn-layout-mode": "配置方向",
     // Confirmations / Dialogs
     "confirm-dialog-title": "確認",
     "confirm-new-title": "新規作成の確認",
@@ -145,6 +147,8 @@ const TRANSLATIONS = {
     "ctx-center-view": "Center View",
     "ctx-fit-screen": "Fit to Screen",
     "ctx-new-map": "New Map",
+    "btn-layout-mode-title": "Toggle Layout (Balanced / Right-Only)",
+    "btn-layout-mode": "Layout",
     // Confirmations / Dialogs
     "confirm-dialog-title": "Confirmation",
     "confirm-new-title": "Confirm New Canvas",
@@ -222,6 +226,7 @@ function setLocalStorageData(key, value) {
 
 // --- Application State ---
 let mindMapData = getLocalStorageData('noxmind_data', DEFAULT_MINDMAP);
+let layoutMode = getLocalStorageData('noxmind_layout_mode', 'balanced');
 let activeNodeId = 'root';
 let isEditing = false;
 let defaultBorderless = false;
@@ -512,19 +517,23 @@ function layoutSubtree(node, parentX, parentY, direction) {
     node.x = 0;
     node.y = 0;
 
-    // Distribute children left and right
-    const lefts = [];
-    const rights = [];
-    node.children.forEach((child, i) => {
-      if (i % 2 === 0) {
-        rights.push(child);
-      } else {
-        lefts.push(child);
-      }
-    });
+    if (layoutMode === 'right-only') {
+      layoutChildren(node.children, 0, 0, 1, node);
+    } else {
+      // Distribute children left and right
+      const lefts = [];
+      const rights = [];
+      node.children.forEach((child, i) => {
+        if (i % 2 === 0) {
+          rights.push(child);
+        } else {
+          lefts.push(child);
+        }
+      });
 
-    layoutChildren(rights, 0, 0, 1, node);
-    layoutChildren(lefts, 0, 0, -1, node);
+      layoutChildren(rights, 0, 0, 1, node);
+      layoutChildren(lefts, 0, 0, -1, node);
+    }
   } else if (!node.collapsed) {
     layoutChildren(node.children, node.x, node.y, direction, node);
   }
@@ -557,6 +566,7 @@ function layoutChildren(children, parentX, parentY, direction, parentNode) {
 // Get nodes direction (1 for right, -1 for left)
 function getNodeDirection(nodeId) {
   if (nodeId === 'root') return 1;
+  if (layoutMode === 'right-only') return 1;
   
   // Find which branch path from root this node belongs to
   let current = findNodeById(mindMapData, nodeId);
@@ -600,6 +610,9 @@ function renderMindMap() {
 
   // Update properties sidebar values
   updateSidebar();
+
+  // Update Layout Mode Button UI
+  updateLayoutModeUI();
 }
 
 /**
@@ -1902,6 +1915,17 @@ function setupEventListeners() {
   document.getElementById('btn-fit').addEventListener('click', fitToScreen);
   document.getElementById('btn-center').addEventListener('click', centerMindMap);
 
+  // Layout mode toggle listener
+  const btnLayoutMode = document.getElementById('btn-layout-mode');
+  if (btnLayoutMode) {
+    btnLayoutMode.addEventListener('click', () => {
+      layoutMode = layoutMode === 'balanced' ? 'right-only' : 'balanced';
+      setLocalStorageData('noxmind_layout_mode', layoutMode);
+      updateLayoutModeUI();
+      renderMindMap();
+    });
+  }
+
   // Zoom floats
   document.getElementById('btn-zoom-in').addEventListener('click', () => zoom(1.1));
   document.getElementById('btn-zoom-out').addEventListener('click', () => zoom(0.9));
@@ -2168,6 +2192,22 @@ function setAllNodesCollapseState(node, state) {
   }
   if (node.children) {
     node.children.forEach(child => setAllNodesCollapseState(child, state));
+  }
+}
+
+// Update Layout Mode Toggle Button Icon and Class
+function updateLayoutModeUI() {
+  const btnLayoutMode = document.getElementById('btn-layout-mode');
+  if (!btnLayoutMode) return;
+
+  if (layoutMode === 'right-only') {
+    btnLayoutMode.classList.add('active');
+    const icon = btnLayoutMode.querySelector('.material-icons-round');
+    if (icon) icon.textContent = 'align_horizontal_right';
+  } else {
+    btnLayoutMode.classList.remove('active');
+    const icon = btnLayoutMode.querySelector('.material-icons-round');
+    if (icon) icon.textContent = 'align_horizontal_left';
   }
 }
 
