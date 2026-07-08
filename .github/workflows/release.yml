@@ -42,8 +42,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: "Mindy ${{ github.ref_name }}"
-          releaseBody: "Mindy release version ${{ github.ref_name }}"
+          releaseName: "NoxMind ${{ github.ref_name }}"
+          releaseBody: "NoxMind release version ${{ github.ref_name }}"
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
