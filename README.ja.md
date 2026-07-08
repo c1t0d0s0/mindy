@@ -1,6 +1,6 @@
-# Mindy - Mind Mapping Tool
+# NoxMind - Mind Mapping Tool
 
-Mindy は、黒を基調としたシンプルなデザインのマインドマップ作成用シングルページWebアプリケーションです。  
+NoxMind は、黒を基調としたシンプルなデザインのマインドマップ作成用シングルページWebアプリケーションです。  
 直感的かつ高速な操作で、思考の整理やアイデアのブレインストーミングをサポートします。
 
 ---
@@ -139,9 +139,9 @@ GitHub Actions などでビルドされた未署名の macOS アプリ（`.dmg` 
 
 ```bash
 # アプリケーションフォルダに配置した場合の解除コマンド
-xattr -cr /Applications/Mindy.app
+xattr -cr /Applications/NoxMind.app
 ```
-*(※ アプリを別の場所へインストールしている場合は、`/Applications/Mindy.app` の部分を実際の配置パスに変更してください)*
+*(※ アプリを別の場所へインストールしている場合は、`/Applications/NoxMind.app` の部分を実際の配置パスに変更してください)*
 
 ---
 

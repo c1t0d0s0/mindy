@@ -1,5 +1,5 @@
 /**
- * Mindy - Elegant Mind Mapping Application
+ * NoxMind - Elegant Mind Mapping Application
  * Core scripting file managing state, layout, SVG rendering, zoom/pan, import/export
  */
 
@@ -34,7 +34,7 @@ const TRANSLATIONS = {
     "btn-sidebar-delete": "ノード削除 (Del)",
     "color-custom": "カスタム",
     // Help Modal
-    "help-title": "Mindy の使い方",
+    "help-title": "NoxMind の使い方",
     "help-basic-ops": "基本操作",
     "help-zoom": "ズーム:",
     "help-zoom-desc": "マウスホイールを回す、または画面右下の「+」「-」ボタンを押します。",
@@ -102,7 +102,7 @@ const TRANSLATIONS = {
     "btn-sidebar-delete": "Delete Node (Del)",
     "color-custom": "Custom",
     // Help Modal
-    "help-title": "How to use Mindy",
+    "help-title": "How to use NoxMind",
     "help-basic-ops": "Basic Operations",
     "help-zoom": "Zoom:",
     "help-zoom-desc": "Scroll the mouse wheel, or press the '+' / '-' buttons in the bottom right corner.",
@@ -199,7 +199,7 @@ function setLocalStorageData(key, value) {
 }
 
 // --- Application State ---
-let mindMapData = getLocalStorageData('mindy_data', DEFAULT_MINDMAP);
+let mindMapData = getLocalStorageData('noxmind_data', DEFAULT_MINDMAP);
 let activeNodeId = 'root';
 let isEditing = false;
 let defaultBorderless = false;
@@ -271,7 +271,7 @@ function findParentNode(node, childId) {
 
 // Save to localStorage
 function saveToLocalStorage() {
-  setLocalStorageData('mindy_data', mindMapData);
+  setLocalStorageData('noxmind_data', mindMapData);
 }
 
 // Convert client coordinates to SVG viewport coordinates
@@ -1015,7 +1015,7 @@ function exportJSON() {
   // Format filename with timestamp
   const date = new Date();
   const stamp = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
-  downloadAnchor.setAttribute("download", `mindy_mindmap_${stamp}.json`);
+  downloadAnchor.setAttribute("download", `noxmind_mindmap_${stamp}.json`);
   
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
@@ -1213,7 +1213,7 @@ function exportSVG() {
   
   const downloadAnchor = document.createElement('a');
   downloadAnchor.href = url;
-  downloadAnchor.download = 'mindy_mindmap.svg';
+  downloadAnchor.download = 'noxmind_mindmap.svg';
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
   
@@ -1257,7 +1257,7 @@ function exportPNG() {
       
       const downloadAnchor = document.createElement('a');
       downloadAnchor.href = pngUrl;
-      downloadAnchor.download = 'mindy_mindmap.png';
+      downloadAnchor.download = 'noxmind_mindmap.png';
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       
@@ -1876,7 +1876,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Handle fallback version display if placeholder isn't replaced by build script
   const versionSpan = document.querySelector('.app-version');
   if (versionSpan && versionSpan.textContent.includes('__APP_VERSION__')) {
-    versionSpan.textContent = 'v0.4.0'; // Fallback value from tauri.conf.json
+    versionSpan.textContent = 'v0.5.0'; // Fallback value from tauri.conf.json
   }
 
   // Apply UI translations based on system language

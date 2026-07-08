@@ -1,6 +1,6 @@
-# Mindy - Mind Mapping Tool
+# NoxMind - Mind Mapping Tool
 
-Mindy is a simple and elegant single-page web application for mind mapping, styled with a sleek dark theme.  
+NoxMind is a simple and elegant single-page web application for mind mapping, styled with a sleek dark theme.  
 It supports organizing thoughts and brainstorming ideas with intuitive and lightning-fast controls.
 
 ---
@@ -138,9 +138,9 @@ You can remove the Quarantine flag by executing this command in the Terminal:
 
 ```bash
 # If placed inside the Applications folder:
-xattr -cr /Applications/Mindy.app
+xattr -cr /Applications/NoxMind.app
 ```
-*(Replace `/Applications/Mindy.app` with the actual path if installed elsewhere)*
+*(Replace `/Applications/NoxMind.app` with the actual path if installed elsewhere)*
 
 ---
 
