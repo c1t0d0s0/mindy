@@ -312,10 +312,25 @@ html, body {
 }
 
 /* Selected Node State */
+.mindmap-node.selected {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(137, 180, 250, 0.25), 
+              0 0 8px rgba(137, 180, 250, 0.3);
+}
+
 .mindmap-node.active {
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px rgba(137, 180, 250, 0.35), 
-              0 0 16px rgba(137, 180, 250, 0.5);
+  box-shadow: 0 0 0 4px rgba(137, 180, 250, 0.45), 
+              0 0 16px rgba(137, 180, 250, 0.6);
+}
+
+/* SVG Marquee Area Selection Box */
+.selection-box {
+  fill: rgba(137, 180, 250, 0.15);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
 }
 
 /* Content Editable state */
