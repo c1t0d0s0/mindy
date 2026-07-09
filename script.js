@@ -88,6 +88,7 @@ const TRANSLATIONS = {
     "central-theme": "セントラルテーマ",
     "confirm-err-title": "削除できません",
     "confirm-err-root": "セントラルテーマ（ルート）は削除できません。",
+    "confirm-delete-msg-multi": "選択した {count} 個のノードと、そのすべての子ノードを削除します。<br>本当に削除しますか？",
     "search-placeholder": "ノードを検索...",
     // Context Menu
     "ctx-add-child": "子ノードを追加",
@@ -177,6 +178,7 @@ const TRANSLATIONS = {
     "confirm-dialog-title": "Confirmation",
     "confirm-err-title": "Cannot Delete",
     "confirm-err-root": "The Central Theme (root) cannot be deleted.",
+    "confirm-delete-msg-multi": "This will delete the {count} selected nodes and all their child nodes.<br>Are you sure you want to delete?",
     "search-placeholder": "Search nodes...",
     // Context Menu
     "ctx-add-child": "Add Child Node",
@@ -247,6 +249,12 @@ if (!mindMapData || mindMapData.id !== 'root' || typeof mindMapData.text !== 'st
 let layoutMode = getLocalStorageData('noxmind_layout_mode', 'balanced');
 let currentFilePath = null;
 let activeNodeId = 'root';
+let selectedNodeIds = new Set(['root']); // Multiple selection state
+let isSelectingArea = false;
+let selectionStartWorldX = 0;
+let selectionStartWorldY = 0;
+let tempSelectedNodeIds = new Set();
+let isCanvasDragged = false;
 let isEditing = false;
 let defaultBorderless = false;
 
@@ -318,6 +326,17 @@ function findParentNode(node, childId) {
     }
   }
   return null;
+}
+
+// Get all nodes as a flat list recursively
+function getAllNodes(node) {
+  let list = [node];
+  if (node.children) {
+    node.children.forEach(child => {
+      list = list.concat(getAllNodes(child));
+    });
+  }
+  return list;
 }
 
 // Save to localStorage
@@ -704,6 +723,7 @@ function renderNode(node, depth) {
   div.setAttribute('data-id', node.id);
   div.className = `mindmap-node level-${depth}`;
   if (node.id === activeNodeId) div.className += ' active';
+  if (selectedNodeIds.has(node.id)) div.className += ' selected';
   if (node.borderless) div.className += ' borderless';
   
   if (searchMatches.includes(node.id)) {
@@ -775,7 +795,8 @@ function renderNode(node, depth) {
   // Attach Event Listeners to Nodes
   div.addEventListener('click', (e) => {
     e.stopPropagation();
-    selectNode(node.id);
+    const isMulti = e.shiftKey || e.ctrlKey || e.metaKey;
+    selectNode(node.id, isMulti);
   });
 
   div.addEventListener('dblclick', (e) => {
@@ -805,7 +826,9 @@ function renderNode(node, depth) {
     if (isEditing) return;
     
     contextMenuNodeId = node.id;
-    selectNode(node.id);
+    if (!selectedNodeIds.has(node.id)) {
+      selectNode(node.id);
+    }
     showContextMenu(e.clientX, e.clientY, node.id);
   });
 
@@ -817,26 +840,51 @@ function renderNode(node, depth) {
 
 // --- Node Editing and Interaction ---
 
-function selectNode(id) {
+function selectNode(id, isMulti = false) {
   if (isEditing) finishEditing();
   
-  activeNodeId = id;
-  
-  // Refresh active status class
-  document.querySelectorAll('.mindmap-node').forEach(el => el.classList.remove('active'));
-  const activeFo = document.getElementById(`text-${id}`);
-  if (activeFo) {
-    const nodeDiv = activeFo.closest('.mindmap-node');
-    if (nodeDiv) {
-      nodeDiv.classList.add('active');
+  if (isMulti) {
+    if (selectedNodeIds.has(id)) {
+      selectedNodeIds.delete(id);
+      if (activeNodeId === id) {
+        activeNodeId = selectedNodeIds.size > 0 ? Array.from(selectedNodeIds)[selectedNodeIds.size - 1] : null;
+      }
+    } else {
+      selectedNodeIds.add(id);
+      activeNodeId = id;
     }
+  } else {
+    selectedNodeIds.clear();
+    if (id) selectedNodeIds.add(id);
+    activeNodeId = id;
   }
+  
+  // Refresh active/selected status classes
+  document.querySelectorAll('.mindmap-node').forEach(el => {
+    el.classList.remove('active');
+    el.classList.remove('selected');
+  });
+  
+  selectedNodeIds.forEach(selectedId => {
+    const activeFo = document.getElementById(`text-${selectedId}`);
+    if (activeFo) {
+      const nodeDiv = activeFo.closest('.mindmap-node');
+      if (nodeDiv) {
+        nodeDiv.classList.add('selected');
+        if (selectedId === activeNodeId) {
+          nodeDiv.classList.add('active');
+        }
+      }
+    }
+  });
   
   // Re-render to update shadows and selections cleanly
   renderMindMap();
   
   // Open property panel sidebar
-  sidebar.classList.add('open');
+  if (activeNodeId) {
+    sidebar.classList.add('open');
+  }
   
   // Reset document scroll positions to block iOS Safari auto-scroll bug on value updates
   setTimeout(() => {
@@ -992,27 +1040,49 @@ function showConfirm(title, message, okText, onConfirm, isAlert = false) {
 }
 
 function deleteNode(nodeId = activeNodeId) {
-  if (nodeId === 'root') {
+  let nodesToDelete = [];
+  if (selectedNodeIds.has(nodeId) && selectedNodeIds.size > 1) {
+    nodesToDelete = Array.from(selectedNodeIds);
+  } else {
+    nodesToDelete = [nodeId];
+  }
+  
+  nodesToDelete = nodesToDelete.filter(id => id !== 'root');
+  if (nodesToDelete.length === 0) {
     showConfirm(t("confirm-err-title"), t("confirm-err-root"), "OK", null, true);
     return;
   }
-
-  const parentNode = findParentNode(mindMapData, nodeId);
-  if (!parentNode) return;
-
-  showConfirm(
-    t("confirm-delete-title"),
-    t("confirm-delete-msg"),
-    t("confirm-delete-btn"),
-    () => {
-      parentNode.children = parentNode.children.filter(c => c.id !== nodeId);
-      saveToLocalStorage();
-      
-      // Select parent after deletion
-      selectNode(parentNode.id);
-      renderMindMap();
+  
+  // 祖先が削除される場合はその子孫ノードを削除対象から除外（二重削除エラー防止）
+  const finalNodesToDelete = nodesToDelete.filter(id => {
+    let parent = findParentNode(mindMapData, id);
+    while (parent) {
+      if (nodesToDelete.includes(parent.id)) return false;
+      parent = findParentNode(mindMapData, parent.id);
     }
-  );
+    return true;
+  });
+  
+  const title = t("confirm-delete-title");
+  let msg = t("confirm-delete-msg");
+  if (finalNodesToDelete.length > 1) {
+    msg = t("confirm-delete-msg-multi").replace("{count}", finalNodesToDelete.length);
+  }
+  const btn = t("confirm-delete-btn");
+  
+  showConfirm(title, msg, btn, () => {
+    finalNodesToDelete.forEach(id => {
+      const parentNode = findParentNode(mindMapData, id);
+      if (parentNode) {
+        parentNode.children = parentNode.children.filter(c => c.id !== id);
+      }
+    });
+    
+    selectedNodeIds.clear();
+    saveToLocalStorage();
+    selectNode('root');
+    renderMindMap();
+  });
 }
 
 // --- Zoom & Pan Management ---
@@ -1175,6 +1245,7 @@ async function openNative() {
       if (parsedData && parsedData.id === 'root' && typeof parsedData.text === 'string') {
         mindMapData = parsedData;
         currentFilePath = result.path;
+        selectedNodeIds = new Set(['root']);
         activeNodeId = 'root';
         saveToLocalStorage();
         updateFileNameDisplay();
@@ -1265,6 +1336,7 @@ function importJSON(e) {
       // Basic validation of import structure
       if (parsedData && parsedData.id === 'root' && typeof parsedData.text === 'string') {
         mindMapData = parsedData;
+        selectedNodeIds = new Set(['root']);
         activeNodeId = 'root';
         saveToLocalStorage();
         renderMindMap();
@@ -1528,10 +1600,16 @@ function updateSidebar() {
     return;
   }
   
-  nodeTextInput.disabled = false;
-  nodeTextInput.placeholder = "テキストを入力...";
-  if (document.activeElement !== nodeTextInput) {
-    nodeTextInput.value = node.text;
+  if (selectedNodeIds.size > 1) {
+    nodeTextInput.disabled = true;
+    nodeTextInput.value = "";
+    nodeTextInput.placeholder = `[${selectedNodeIds.size}個のノードを選択中]`;
+  } else {
+    nodeTextInput.disabled = false;
+    nodeTextInput.placeholder = "テキストを入力...";
+    if (document.activeElement !== nodeTextInput) {
+      nodeTextInput.value = node.text;
+    }
   }
   
   // Set custom color pickers to matching node values
@@ -1543,32 +1621,51 @@ function updateSidebar() {
   document.getElementById('chk-borderless').checked = node.borderless || false;
   
   // If root node, disable branch color (cannot edit connection lines) or sibling operations
+  const btnChild = document.getElementById('btn-add-child');
   const btnSibling = document.getElementById('btn-add-sibling');
   const btnDelete = document.getElementById('btn-delete-node');
   
-  if (node.id === 'root') {
+  if (selectedNodeIds.size > 1) {
+    if (btnChild) {
+      btnChild.disabled = true;
+      btnChild.style.opacity = 0.5;
+    }
     btnSibling.disabled = true;
     btnSibling.style.opacity = 0.5;
+  } else {
+    if (btnChild) {
+      btnChild.disabled = false;
+      btnChild.style.opacity = 1;
+    }
+    if (node.id === 'root') {
+      btnSibling.disabled = true;
+      btnSibling.style.opacity = 0.5;
+    } else {
+      btnSibling.disabled = false;
+      btnSibling.style.opacity = 1;
+    }
+  }
+  
+  const hasOnlyRootSelected = selectedNodeIds.size === 1 && selectedNodeIds.has('root');
+  if (hasOnlyRootSelected) {
     btnDelete.disabled = true;
     btnDelete.style.opacity = 0.5;
   } else {
-    btnSibling.disabled = false;
-    btnSibling.style.opacity = 1;
     btnDelete.disabled = false;
     btnDelete.style.opacity = 1;
   }
 }
 
 function updateActiveNodeStyle(property, value) {
-  const node = findNodeById(mindMapData, activeNodeId);
-  if (!node) return;
-
-  node[property] = value;
-  
-  // If editing branch color, also sync children branch colors in depth-first order
-  // if they don't have override colors, or keep the connection synced.
-  // Actually, connections get colored using child.branchColor.
-  // So when we edit the branch color of a node, it colors the line connecting from parent to this node.
+  if (selectedNodeIds.size > 1) {
+    selectedNodeIds.forEach(id => {
+      const node = findNodeById(mindMapData, id);
+      if (node) node[property] = value;
+    });
+  } else {
+    const node = findNodeById(mindMapData, activeNodeId);
+    if (node) node[property] = value;
+  }
   
   saveToLocalStorage();
   renderMindMap();
@@ -1643,17 +1740,90 @@ function setupEventListeners() {
   // SVG zoom/pan dragging listeners
   svg.addEventListener('mousedown', (e) => {
     hideContextMenu();
-    // Only drag on canvas background, not on interactive nodes
     if (!e.target.closest('.mindmap-node')) {
-      isDragging = true;
-      startX = e.clientX - translateX;
-      startY = e.clientY - translateY;
-      svg.style.cursor = 'grabbing';
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        isSelectingArea = true;
+        isCanvasDragged = false;
+        
+        const mouseSvg = getSvgCoordinates(e.clientX, e.clientY);
+        selectionStartWorldX = mouseSvg.x;
+        selectionStartWorldY = mouseSvg.y;
+        
+        let selBox = document.getElementById('selection-box');
+        if (!selBox) {
+          selBox = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          selBox.setAttribute('id', 'selection-box');
+          selBox.setAttribute('class', 'selection-box');
+          viewport.appendChild(selBox);
+        }
+        selBox.setAttribute('x', selectionStartWorldX);
+        selBox.setAttribute('y', selectionStartWorldY);
+        selBox.setAttribute('width', 0);
+        selBox.setAttribute('height', 0);
+        selBox.style.display = 'block';
+        
+        tempSelectedNodeIds.clear();
+      } else {
+        isDragging = true;
+        isCanvasDragged = false;
+        startX = e.clientX - translateX;
+        startY = e.clientY - translateY;
+        svg.style.cursor = 'grabbing';
+      }
     }
   });
 
   window.addEventListener('mousemove', (e) => {
-    if (isDragging) {
+    if (isSelectingArea) {
+      isCanvasDragged = true;
+      const mouseSvg = getSvgCoordinates(e.clientX, e.clientY);
+      
+      const x = Math.min(selectionStartWorldX, mouseSvg.x);
+      const y = Math.min(selectionStartWorldY, mouseSvg.y);
+      const width = Math.abs(selectionStartWorldX - mouseSvg.x);
+      const height = Math.abs(selectionStartWorldY - mouseSvg.y);
+      
+      const selBox = document.getElementById('selection-box');
+      if (selBox) {
+        selBox.setAttribute('x', x);
+        selBox.setAttribute('y', y);
+        selBox.setAttribute('width', width);
+        selBox.setAttribute('height', height);
+      }
+      
+      const rectLeft = x;
+      const rectRight = x + width;
+      const rectTop = y;
+      const rectBottom = y + height;
+      
+      const nodes = getAllNodes(mindMapData);
+      tempSelectedNodeIds.clear();
+      
+      nodes.forEach(node => {
+        const nodeLeft = node.x - node.width / 2;
+        const nodeRight = node.x + node.width / 2;
+        const nodeTop = node.y - node.height / 2;
+        const nodeBottom = node.y + node.height / 2;
+        
+        const isIntersect = nodeLeft < rectRight && nodeRight > rectLeft && 
+                           nodeTop < rectBottom && nodeBottom > rectTop;
+        
+        const nodeDiv = document.querySelector(`.mindmap-node[data-id="${node.id}"]`);
+        if (nodeDiv) {
+          if (isIntersect) {
+            tempSelectedNodeIds.add(node.id);
+            nodeDiv.classList.add('selected');
+          } else {
+            if (!selectedNodeIds.has(node.id)) {
+              nodeDiv.classList.remove('selected');
+            } else {
+              nodeDiv.classList.add('selected');
+            }
+          }
+        }
+      });
+    } else if (isDragging) {
+      isCanvasDragged = true;
       translateX = e.clientX - startX;
       translateY = e.clientY - startY;
       updateViewportTransform();
@@ -1713,10 +1883,39 @@ function setupEventListeners() {
   });
 
   window.addEventListener('mouseup', () => {
-    isDragging = false;
-    svg.style.cursor = 'grab';
-    
-    if (dragNodeId) {
+    if (isSelectingArea) {
+      isSelectingArea = false;
+      const selBox = document.getElementById('selection-box');
+      if (selBox) selBox.style.display = 'none';
+      
+      // Confirm selection
+      selectedNodeIds.clear();
+      tempSelectedNodeIds.forEach(id => selectedNodeIds.add(id));
+      tempSelectedNodeIds.clear();
+      
+      if (selectedNodeIds.size > 0) {
+        activeNodeId = Array.from(selectedNodeIds)[selectedNodeIds.size - 1];
+        sidebar.classList.add('open');
+      } else {
+        activeNodeId = null;
+        sidebar.classList.remove('open');
+      }
+      
+      updateSidebar();
+      renderMindMap();
+    } else if (isDragging) {
+      isDragging = false;
+      svg.style.cursor = 'grab';
+      
+      // If mouse didn't drag but was just a click, deselect all
+      if (!isCanvasDragged) {
+        selectedNodeIds.clear();
+        activeNodeId = null;
+        updateSidebar();
+        renderMindMap();
+      }
+      isCanvasDragged = false;
+    } else if (dragNodeId) {
       const fo = document.getElementById(`fo-${dragNodeId}`);
       if (fo) {
         fo.classList.remove('dragging');
@@ -1834,9 +2033,17 @@ function setupEventListeners() {
   svg.addEventListener('click', (e) => {
     hideContextMenu();
     if (!e.target.closest('.mindmap-node')) {
+      if (isCanvasDragged) {
+        isCanvasDragged = false;
+        return;
+      }
       if (isEditing) finishEditing();
       activeNodeId = null;
-      document.querySelectorAll('.mindmap-node').forEach(el => el.classList.remove('active'));
+      selectedNodeIds.clear();
+      document.querySelectorAll('.mindmap-node').forEach(el => {
+        el.classList.remove('active');
+        el.classList.remove('selected');
+      });
       sidebar.classList.remove('open');
       renderMindMap();
     }
@@ -1855,13 +2062,25 @@ function setupEventListeners() {
     if (isEditing || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
     
     switch (e.key) {
+      case 'a':
+      case 'A':
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          const allNodes = getAllNodes(mindMapData);
+          selectedNodeIds.clear();
+          allNodes.forEach(n => selectedNodeIds.add(n.id));
+          activeNodeId = 'root';
+          updateSidebar();
+          renderMindMap();
+        }
+        break;
       case 'Tab':
         e.preventDefault();
-        if (activeNodeId) addNewChild();
+        if (activeNodeId && selectedNodeIds.size === 1) addNewChild();
         break;
       case 'Enter':
         e.preventDefault();
-        if (activeNodeId) addNewSibling();
+        if (activeNodeId && selectedNodeIds.size === 1) addNewSibling();
         break;
       case 'Delete':
       case 'Backspace':
@@ -1874,6 +2093,7 @@ function setupEventListeners() {
         e.preventDefault();
         hideContextMenu();
         activeNodeId = null;
+        selectedNodeIds.clear();
         sidebar.classList.remove('open');
         renderMindMap();
         break;
@@ -1905,6 +2125,7 @@ function setupEventListeners() {
         t("confirm-new-btn"),
         () => {
           mindMapData = JSON.parse(JSON.stringify(DEFAULT_MINDMAP));
+          selectedNodeIds = new Set(['root']);
           activeNodeId = 'root';
           saveToLocalStorage();
           renderMindMap();
@@ -2454,7 +2675,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Handle fallback version display if placeholder isn't replaced by build script
   const versionSpan = document.querySelector('.app-version');
   if (versionSpan && versionSpan.textContent.includes('__APP_VERSION__')) {
-    versionSpan.textContent = 'v0.9.1'; // Fallback value from tauri.conf.json
+    versionSpan.textContent = 'v0.10.0'; // Fallback value from tauri.conf.json
   }
 
   // Apply UI translations based on system language
