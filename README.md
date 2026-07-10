@@ -62,6 +62,15 @@ Speed up your workflow using these built-in keyboard shortcuts:
 
 This application can be packaged as a standalone desktop app for Windows and macOS using [Tauri](https://tauri.app/).
 
+### Building Assets (for Web / Tauri Pre-build)
+Before running or building the Tauri application, or deploying the web version, you can build the assets to generate the production files in the `www` folder (this is automatically executed during Tauri dev/build steps).
+This process automatically injects the version string from `tauri.conf.json` into `index.html`.
+
+```bash
+npm run build:assets
+```
+This processes and copies `index.html`, `script.js`, and `style.css` from the project root into the `www/` directory.
+
 ### Local Development & Build
 1. **Install dependencies:**
    ```bash
