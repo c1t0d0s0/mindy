@@ -3609,7 +3609,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Handle fallback version display if placeholder isn't replaced by build script
   const versionSpan = document.querySelector('.app-version');
   if (versionSpan && versionSpan.textContent.includes('__APP_VERSION__')) {
-    versionSpan.textContent = 'v0.12.3'; // Fallback value from tauri.conf.json
+    versionSpan.textContent = 'v0.12.4'; // Fallback value from tauri.conf.json
   }
 
   // Apply UI translations based on system language
