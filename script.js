@@ -261,6 +261,7 @@ let currentFilePath = null;
 let activeNodeId = 'root';
 let selectedNodeIds = new Set(['root']); // Multiple selection state
 let isSelectingArea = false;
+let isAreaSelectDragged = false;
 let selectionStartWorldX = 0;
 let selectionStartWorldY = 0;
 let tempSelectedNodeIds = new Set();
@@ -310,6 +311,7 @@ let nodesGroup;
 let connectionsGroup;
 let togglesGroup;
 let connectionsCanvas;
+let webkitMarqueeRect = null;
 let sidebar;
 let fileInput;
 
@@ -1042,6 +1044,18 @@ function drawWebKitConnectionsCanvas() {
     );
     ctx.stroke();
   });
+
+  if (webkitMarqueeRect && webkitMarqueeRect.width > 0 && webkitMarqueeRect.height > 0) {
+    const { x, y, width, height } = webkitMarqueeRect;
+    ctx.fillStyle = 'rgba(137, 180, 250, 0.15)';
+    ctx.strokeStyle = '#89b4fa';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    ctx.fillRect(x, y, width, height);
+    ctx.strokeRect(x, y, width, height);
+    ctx.setLineDash([]);
+  }
+
   ctx.restore();
 }
 
@@ -2523,24 +2537,34 @@ function setupEventListeners() {
     if (!e.target.closest('.mindmap-node')) {
       if (e.shiftKey || e.ctrlKey || e.metaKey) {
         isSelectingArea = true;
+        isAreaSelectDragged = false;
         isCanvasDragged = false;
 
         const mouseSvg = getSvgCoordinates(e.clientX, e.clientY);
         selectionStartWorldX = mouseSvg.x;
         selectionStartWorldY = mouseSvg.y;
 
-        let selBox = document.getElementById('selection-box');
-        if (!selBox) {
-          selBox = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          selBox.setAttribute('id', 'selection-box');
-          selBox.setAttribute('class', 'selection-box');
-          viewport.appendChild(selBox);
+        if (!isAppleWebKit) {
+          let selBox = document.getElementById('selection-box');
+          if (!selBox) {
+            selBox = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            selBox.setAttribute('id', 'selection-box');
+            selBox.setAttribute('class', 'selection-box');
+            viewport.appendChild(selBox);
+          }
+          selBox.setAttribute('x', selectionStartWorldX);
+          selBox.setAttribute('y', selectionStartWorldY);
+          selBox.setAttribute('width', 0);
+          selBox.setAttribute('height', 0);
+          selBox.style.display = 'block';
+        } else {
+          webkitMarqueeRect = {
+            x: selectionStartWorldX,
+            y: selectionStartWorldY,
+            width: 0,
+            height: 0
+          };
         }
-        selBox.setAttribute('x', selectionStartWorldX);
-        selBox.setAttribute('y', selectionStartWorldY);
-        selBox.setAttribute('width', 0);
-        selBox.setAttribute('height', 0);
-        selBox.style.display = 'block';
 
         tempSelectedNodeIds.clear();
       } else {
@@ -2559,20 +2583,28 @@ function setupEventListeners() {
 
   window.addEventListener('mousemove', (e) => {
     if (isSelectingArea) {
-      isCanvasDragged = true;
       const mouseSvg = getSvgCoordinates(e.clientX, e.clientY);
-      
+
       const x = Math.min(selectionStartWorldX, mouseSvg.x);
       const y = Math.min(selectionStartWorldY, mouseSvg.y);
       const width = Math.abs(selectionStartWorldX - mouseSvg.x);
       const height = Math.abs(selectionStartWorldY - mouseSvg.y);
-      
-      const selBox = document.getElementById('selection-box');
-      if (selBox) {
-        selBox.setAttribute('x', x);
-        selBox.setAttribute('y', y);
-        selBox.setAttribute('width', width);
-        selBox.setAttribute('height', height);
+
+      if (width > 2 || height > 2) {
+        isAreaSelectDragged = true;
+      }
+
+      if (!isAppleWebKit) {
+        const selBox = document.getElementById('selection-box');
+        if (selBox) {
+          selBox.setAttribute('x', x);
+          selBox.setAttribute('y', y);
+          selBox.setAttribute('width', width);
+          selBox.setAttribute('height', height);
+        }
+      } else {
+        webkitMarqueeRect = { x, y, width, height };
+        drawWebKitConnectionsCanvas();
       }
       
       const rectLeft = x;
@@ -2702,6 +2734,16 @@ function setupEventListeners() {
       isSelectingArea = false;
       const selBox = document.getElementById('selection-box');
       if (selBox) selBox.style.display = 'none';
+
+      if (isAppleWebKit) {
+        webkitMarqueeRect = null;
+        drawWebKitConnectionsCanvas();
+      }
+
+      if (isAreaSelectDragged) {
+        suppressCanvasBackgroundClick = true;
+      }
+      isAreaSelectDragged = false;
       
       // Confirm selection
       selectedNodeIds.clear();
