@@ -1049,6 +1049,7 @@ function isCanvasBackgroundTarget(target) {
   if (!target) return false;
   return !target.closest('.mindmap-node')
     && !target.closest('.node-toggle-svg')
+    && !target.closest('.node-toggle-btn')
     && !target.closest('.property-sidebar')
     && !target.closest('.zoom-controls')
     && !target.closest('.search-panel')
@@ -1281,6 +1282,7 @@ function renderConnections(node) {
  * Render collapse/expand toggle for a single node (separate SVG layer above foreignObject nodes)
  */
 function renderNodeToggle(node) {
+  if (isAppleWebKit) return;
   if (node.id === 'root' || !node.children || node.children.length === 0) return;
 
   const dir = getNodeDirection(node.id);
@@ -1328,15 +1330,54 @@ function renderAllToggles(node) {
 }
 
 /**
+ * WebKit: HTML toggle inside foreignObject (native SVG toggles fail under CSS transform)
+ */
+function appendNodeToggleButton(nodeDiv, node) {
+  if (node.id === 'root' || !node.children || node.children.length === 0) return;
+
+  const dir = getNodeDirection(node.id);
+  const btn = document.createElementNS('http://www.w3.org/1999/xhtml', 'button');
+  btn.type = 'button';
+  btn.className = `node-toggle-btn ${dir === 1 ? 'dir-right' : 'dir-left'}`;
+  btn.setAttribute('aria-label', node.collapsed ? 'Expand node' : 'Collapse node');
+
+  const icon = document.createElementNS('http://www.w3.org/1999/xhtml', 'span');
+  icon.textContent = node.collapsed ? '+' : '−';
+  icon.setAttribute('aria-hidden', 'true');
+  btn.appendChild(icon);
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleNodeCollapse(node.id);
+  });
+  btn.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+  });
+
+  nodeDiv.appendChild(btn);
+}
+
+/**
  * Render single node HTML inside SVG foreignObject
  */
 function renderNode(node, depth) {
   const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
   const foHeight = getForeignObjectHeight(node, depth);
+  const hasWebKitToggle = isAppleWebKit && node.id !== 'root' && node.children && node.children.length > 0;
+  const togglePad = hasWebKitToggle ? 12 : 0;
+  const toggleDir = hasWebKitToggle ? getNodeDirection(node.id) : 0;
+
+  let foX = node.x - node.width / 2;
+  let foW = node.width;
+  if (togglePad) {
+    foW += togglePad;
+    if (toggleDir === -1) foX -= togglePad;
+  }
+
   fo.setAttribute('id', `fo-${node.id}`);
-  fo.setAttribute('x', node.x - node.width / 2);
+  fo.setAttribute('x', foX);
   fo.setAttribute('y', node.y - foHeight / 2);
-  fo.setAttribute('width', node.width);
+  fo.setAttribute('width', foW);
   fo.setAttribute('height', foHeight);
   fo.setAttribute('class', 'mindmap-node-wrapper');
   
@@ -1371,6 +1412,15 @@ function renderNode(node, depth) {
   span.textContent = node.text;
   
   div.appendChild(span);
+
+  if (hasWebKitToggle) {
+    div.style.width = `${node.width}px`;
+    div.style.boxSizing = 'border-box';
+    if (toggleDir === -1) {
+      div.style.marginLeft = `${togglePad}px`;
+    }
+    appendNodeToggleButton(div, node);
+  }
 
   fo.appendChild(div);
   nodesGroup.appendChild(fo);
@@ -2468,7 +2518,7 @@ function setupEventListeners() {
   // Canvas zoom/pan dragging listeners (canvas-container captures clicks that miss svg on WebKit)
   const onCanvasMouseDown = (e) => {
     hideContextMenu();
-    if (e.target.closest('.node-toggle-svg')) return;
+    if (e.target.closest('.node-toggle-svg') || e.target.closest('.node-toggle-btn')) return;
 
     if (!e.target.closest('.mindmap-node')) {
       if (e.shiftKey || e.ctrlKey || e.metaKey) {

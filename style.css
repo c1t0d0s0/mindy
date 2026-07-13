@@ -1114,6 +1114,11 @@ html.apple-webkit .mindmap-node-wrapper {
   overflow: visible !important;
 }
 
+html.apple-webkit .mindmap-node .node-toggle-btn {
+  flex-shrink: 0;
+  pointer-events: all;
+}
+
 html.apple-webkit #toggles-group {
   pointer-events: none;
 }
