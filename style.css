@@ -233,6 +233,17 @@ html, body {
   cursor: grabbing;
 }
 
+/* WebKit: branch lines drawn on canvas overlay (SVG paths fail under CSS transform) */
+.connections-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* SVG Elements styles */
 #mindmap-svg {
   position: absolute;
@@ -244,6 +255,7 @@ html, body {
   user-select: none;
   -webkit-user-select: none;
   overflow: hidden !important;
+  z-index: 1;
 }
 
 /* Background grid */
@@ -1087,9 +1099,32 @@ kbd {
   }
 }
 
-/* iOS (all browsers): CSS transform on SVG is driven from script.js */
-html.ios-browser #mindmap-svg {
+/* Apple WebKit (iOS + macOS): CSS transform on SVG is driven from script.js */
+html.ios-browser #mindmap-svg,
+html.apple-webkit #mindmap-svg {
   will-change: transform;
+}
+
+/* Apple WebKit: avoid stroke transition glitches; extra foreignObject height pad from script.js */
+html.apple-webkit .connection-path {
+  transition: none;
+}
+
+html.apple-webkit .mindmap-node-wrapper {
+  overflow: visible !important;
+}
+
+html.apple-webkit .mindmap-node .node-toggle-btn {
+  flex-shrink: 0;
+  pointer-events: all;
+}
+
+html.apple-webkit #toggles-group {
+  pointer-events: none;
+}
+
+html.apple-webkit #toggles-group .node-toggle-svg {
+  pointer-events: all;
 }
 
 /* Drag and Drop Styles */
