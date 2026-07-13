@@ -291,6 +291,8 @@ let translateY = 0;
 let isDragging = false;
 let startX = 0;
 let startY = 0;
+let canvasPanStartX = 0;
+let canvasPanStartY = 0;
 let lastSvgWidth = 0;
 let lastSvgHeight = 0;
 
@@ -305,6 +307,7 @@ let canvasContainer;
 let viewport;
 let nodesGroup;
 let connectionsGroup;
+let togglesGroup;
 let sidebar;
 let fileInput;
 
@@ -930,6 +933,22 @@ function getForeignObjectHeight(node, depth = 0) {
 function forceWebKitRepaint() {
   if (!svg || !viewport) return;
   updateViewportTransform();
+  if (connectionsGroup) {
+    try {
+      connectionsGroup.getBBox();
+    } catch (e) {
+      // empty group
+    }
+  }
+}
+
+function scheduleWebKitConnectionRedraw(generation) {
+  requestAnimationFrame(() => {
+    if (generation !== renderMindMapGeneration || !connectionsGroup) return;
+    connectionsGroup.innerHTML = '';
+    renderConnections(mindMapData);
+    forceWebKitRepaint();
+  });
 }
 
 /**
@@ -1050,6 +1069,7 @@ function renderMindMap() {
   // Clear groups
   nodesGroup.innerHTML = '';
   connectionsGroup.innerHTML = '';
+  if (togglesGroup) togglesGroup.innerHTML = '';
 
   // 1st Pass: Create invisible nodes to measure heights
   createInvisibleNodes(mindMapData);
@@ -1065,9 +1085,10 @@ function renderMindMap() {
     calculateSubtreeHeights(mindMapData);
     layoutSubtree(mindMapData, 0, 0, 1);
 
-    // Render nodes and connections
+    // Render nodes, connections, and toggle buttons (toggles on top layer)
     renderNode(mindMapData, 0);
     renderConnections(mindMapData);
+    renderAllToggles(mindMapData);
 
     // Update properties sidebar values
     updateSidebar();
@@ -1077,6 +1098,7 @@ function renderMindMap() {
 
     if (isAppleWebKit) {
       forceWebKitRepaint();
+      scheduleWebKitConnectionRedraw(generation);
     }
   };
 
@@ -1140,6 +1162,56 @@ function renderConnections(node) {
 }
 
 /**
+ * Render collapse/expand toggle for a single node (separate SVG layer above foreignObject nodes)
+ */
+function renderNodeToggle(node) {
+  if (node.id === 'root' || !node.children || node.children.length === 0) return;
+
+  const dir = getNodeDirection(node.id);
+  const toggleX = node.x + dir * (node.width / 2);
+  const toggleY = node.y;
+  const targetGroup = togglesGroup || nodesGroup;
+
+  const toggleG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  toggleG.setAttribute('class', 'node-toggle-svg');
+  toggleG.setAttribute('cursor', 'pointer');
+
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('cx', toggleX);
+  circle.setAttribute('cy', toggleY);
+  circle.setAttribute('r', '10');
+  circle.setAttribute('fill', 'var(--bg-surface)');
+  circle.setAttribute('stroke', 'var(--accent)');
+  circle.setAttribute('stroke-width', '1.5');
+  toggleG.appendChild(circle);
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  let pathData = `M ${toggleX - 5} ${toggleY} L ${toggleX + 5} ${toggleY}`;
+  if (node.collapsed) {
+    pathData += ` M ${toggleX} ${toggleY - 5} L ${toggleX} ${toggleY + 5}`;
+  }
+  path.setAttribute('d', pathData);
+  path.setAttribute('stroke', 'var(--text-main)');
+  path.setAttribute('stroke-width', '1.5');
+  path.setAttribute('stroke-linecap', 'round');
+  toggleG.appendChild(path);
+
+  toggleG.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleNodeCollapse(node.id);
+  });
+
+  targetGroup.appendChild(toggleG);
+}
+
+function renderAllToggles(node) {
+  renderNodeToggle(node);
+  if (node.children && !node.collapsed) {
+    node.children.forEach(child => renderAllToggles(child));
+  }
+}
+
+/**
  * Render single node HTML inside SVG foreignObject
  */
 function renderNode(node, depth) {
@@ -1186,44 +1258,6 @@ function renderNode(node, depth) {
 
   fo.appendChild(div);
   nodesGroup.appendChild(fo);
-
-  // Render toggle button if node has children and is not the root node
-  if (node.id !== 'root' && node.children && node.children.length > 0) {
-    const dir = getNodeDirection(node.id);
-    const toggleX = node.x + dir * (node.width / 2);
-    const toggleY = node.y;
-
-    const toggleG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    toggleG.setAttribute('class', 'node-toggle-svg');
-    toggleG.setAttribute('cursor', 'pointer');
-
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('cx', toggleX);
-    circle.setAttribute('cy', toggleY);
-    circle.setAttribute('r', '10');
-    circle.setAttribute('fill', 'var(--bg-surface)');
-    circle.setAttribute('stroke', 'var(--accent)');
-    circle.setAttribute('stroke-width', '1.5');
-    toggleG.appendChild(circle);
-
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    let pathData = `M ${toggleX - 5} ${toggleY} L ${toggleX + 5} ${toggleY}`;
-    if (node.collapsed) {
-      pathData += ` M ${toggleX} ${toggleY - 5} L ${toggleX} ${toggleY + 5}`;
-    }
-    path.setAttribute('d', pathData);
-    path.setAttribute('stroke', 'var(--text-main)');
-    path.setAttribute('stroke-width', '1.5');
-    path.setAttribute('stroke-linecap', 'round');
-    toggleG.appendChild(path);
-
-    toggleG.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleNodeCollapse(node.id);
-    });
-
-    nodesGroup.appendChild(toggleG);
-  }
 
   // Attach Event Listeners to Nodes
   div.addEventListener('click', (e) => {
@@ -1311,8 +1345,10 @@ function selectNode(id, isMulti = false) {
     }
   });
   
-  // Re-render to update shadows and selections cleanly
-  renderMindMap();
+  // Re-render to update shadows and selections cleanly (skip on WebKit — class updates suffice and avoid repaint races)
+  if (!isAppleWebKit) {
+    renderMindMap();
+  }
   
   // Open property panel sidebar
   if (activeNodeId) {
@@ -2328,6 +2364,8 @@ function setupEventListeners() {
       } else {
         isDragging = true;
         isCanvasDragged = false;
+        canvasPanStartX = e.clientX;
+        canvasPanStartY = e.clientY;
         startX = e.clientX - translateX;
         startY = e.clientY - translateY;
         svg.style.cursor = 'grabbing';
@@ -2385,7 +2423,11 @@ function setupEventListeners() {
         }
       });
     } else if (isDragging) {
-      isCanvasDragged = true;
+      const panDx = e.clientX - canvasPanStartX;
+      const panDy = e.clientY - canvasPanStartY;
+      if (Math.hypot(panDx, panDy) > 5) {
+        isCanvasDragged = true;
+      }
       translateX = e.clientX - startX;
       translateY = e.clientY - startY;
       updateViewportTransform();
@@ -2496,10 +2538,11 @@ function setupEventListeners() {
       isDragging = false;
       svg.style.cursor = 'grab';
       
-      // If mouse didn't drag but was just a click, deselect all
+      // If mouse didn't drag but was just a click, deselect all and close sidebar
       if (!isCanvasDragged) {
         selectedNodeIds.clear();
         activeNodeId = null;
+        sidebar.classList.remove('open');
         updateSidebar();
         renderMindMap();
       }
@@ -2628,6 +2671,7 @@ function setupEventListeners() {
   svg.addEventListener('click', (e) => {
     hideContextMenu();
     if (!e.target.closest('.mindmap-node')) {
+      sidebar.classList.remove('open');
       if (isCanvasDragged) {
         isCanvasDragged = false;
         return;
@@ -2639,7 +2683,6 @@ function setupEventListeners() {
         el.classList.remove('active');
         el.classList.remove('selected');
       });
-      sidebar.classList.remove('open');
       renderMindMap();
     }
   });
@@ -3351,6 +3394,7 @@ window.addEventListener('DOMContentLoaded', () => {
   viewport = document.getElementById('viewport');
   nodesGroup = document.getElementById('nodes-group');
   connectionsGroup = document.getElementById('connections-group');
+  togglesGroup = document.getElementById('toggles-group');
   sidebar = document.getElementById('property-sidebar');
   fileInput = document.getElementById('file-input');
 

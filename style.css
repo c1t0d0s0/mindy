@@ -1102,6 +1102,14 @@ html.apple-webkit .mindmap-node-wrapper {
   overflow: visible !important;
 }
 
+html.apple-webkit #toggles-group {
+  pointer-events: none;
+}
+
+html.apple-webkit #toggles-group .node-toggle-svg {
+  pointer-events: all;
+}
+
 /* Drag and Drop Styles */
 .mindmap-node.drop-target.drop-child {
   border-style: dashed !important;
