@@ -293,6 +293,7 @@ let startX = 0;
 let startY = 0;
 let canvasPanStartX = 0;
 let canvasPanStartY = 0;
+let suppressCanvasBackgroundClick = false;
 let lastSvgWidth = 0;
 let lastSvgHeight = 0;
 
@@ -308,6 +309,7 @@ let viewport;
 let nodesGroup;
 let connectionsGroup;
 let togglesGroup;
+let connectionsCanvas;
 let sidebar;
 let fileInput;
 
@@ -933,22 +935,152 @@ function getForeignObjectHeight(node, depth = 0) {
 function forceWebKitRepaint() {
   if (!svg || !viewport) return;
   updateViewportTransform();
-  if (connectionsGroup) {
-    try {
-      connectionsGroup.getBBox();
-    } catch (e) {
-      // empty group
-    }
-  }
 }
 
-function scheduleWebKitConnectionRedraw(generation) {
-  requestAnimationFrame(() => {
-    if (generation !== renderMindMapGeneration || !connectionsGroup) return;
-    connectionsGroup.innerHTML = '';
-    renderConnections(mindMapData);
-    forceWebKitRepaint();
+function initWebKitConnectionsCanvas() {
+  if (!isAppleWebKit || !canvasContainer || connectionsCanvas) return;
+  connectionsCanvas = document.createElement('canvas');
+  connectionsCanvas.id = 'connections-canvas';
+  connectionsCanvas.className = 'connections-canvas';
+  connectionsCanvas.setAttribute('aria-hidden', 'true');
+  canvasContainer.insertBefore(connectionsCanvas, canvasContainer.firstChild);
+}
+
+function resizeConnectionsCanvas() {
+  if (!connectionsCanvas || !canvasContainer) return;
+  const w = canvasContainer.clientWidth;
+  const h = canvasContainer.clientHeight;
+  if (w <= 0 || h <= 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  connectionsCanvas.width = Math.round(w * dpr);
+  connectionsCanvas.height = Math.round(h * dpr);
+  connectionsCanvas.style.width = `${w}px`;
+  connectionsCanvas.style.height = `${h}px`;
+}
+
+function buildConnectionSegment(node, child) {
+  const startY = node.y;
+  const endY = child.y;
+  let startX, endX, direction;
+
+  if (node.id === 'root') {
+    direction = child.x > 0 ? 1 : -1;
+    startX = direction === 1 ? node.width / 2 : -node.width / 2;
+    endX = direction === 1 ? child.x - child.width / 2 : child.x + child.width / 2;
+  } else {
+    direction = child.x > node.x ? 1 : -1;
+    startX = direction === 1 ? node.x + node.width / 2 : node.x - node.width / 2;
+    endX = direction === 1 ? child.x - child.width / 2 : child.x + child.width / 2;
+  }
+
+  let strokeWidth = 3;
+  if (node.id === 'root') strokeWidth = 4;
+  else if (!child.children || child.children.length === 0) strokeWidth = 2;
+
+  return {
+    startX,
+    startY,
+    endX,
+    endY,
+    direction,
+    stroke: child.branchColor || node.branchColor || '#89b4fa',
+    strokeWidth
+  };
+}
+
+function collectConnectionSegments(node, segments = []) {
+  if (!node.children || node.children.length === 0 || node.collapsed) return segments;
+  node.children.forEach(child => {
+    segments.push(buildConnectionSegment(node, child));
+    if (!child.collapsed) {
+      collectConnectionSegments(child, segments);
+    }
   });
+  return segments;
+}
+
+function appendConnectionPathsToGroup(group, segments) {
+  segments.forEach((seg) => {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('class', 'connection-path');
+    const dx = Math.abs(seg.endX - seg.startX) * 0.5;
+    const pathData = `M ${seg.startX} ${seg.startY} C ${seg.startX + seg.direction * dx} ${seg.startY}, ${seg.endX - seg.direction * dx} ${seg.endY}, ${seg.endX} ${seg.endY}`;
+    path.setAttribute('d', pathData);
+    path.setAttribute('stroke', seg.stroke);
+    path.setAttribute('stroke-width', seg.strokeWidth);
+    path.setAttribute('fill', 'none');
+    group.appendChild(path);
+  });
+}
+
+function drawWebKitConnectionsCanvas() {
+  if (!isAppleWebKit || !connectionsCanvas) return;
+  resizeConnectionsCanvas();
+  const ctx = connectionsCanvas.getContext('2d');
+  if (!ctx) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  ctx.clearRect(0, 0, connectionsCanvas.width, connectionsCanvas.height);
+  ctx.save();
+  ctx.scale(dpr, dpr);
+  ctx.translate(translateX, translateY);
+  ctx.scale(scale, scale);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  const segments = collectConnectionSegments(mindMapData);
+  segments.forEach((seg) => {
+    const dx = Math.abs(seg.endX - seg.startX) * 0.5;
+    ctx.strokeStyle = seg.stroke;
+    ctx.lineWidth = seg.strokeWidth;
+    ctx.beginPath();
+    ctx.moveTo(seg.startX, seg.startY);
+    ctx.bezierCurveTo(
+      seg.startX + seg.direction * dx, seg.startY,
+      seg.endX - seg.direction * dx, seg.endY,
+      seg.endX, seg.endY
+    );
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+function isCanvasBackgroundTarget(target) {
+  if (!target) return false;
+  return !target.closest('.mindmap-node')
+    && !target.closest('.node-toggle-svg')
+    && !target.closest('.property-sidebar')
+    && !target.closest('.zoom-controls')
+    && !target.closest('.search-panel')
+    && !target.closest('button')
+    && !target.closest('a')
+    && !target.closest('input')
+    && !target.closest('textarea');
+}
+
+function closeSidebarAndDeselect() {
+  if (isEditing) finishEditing();
+  activeNodeId = null;
+  selectedNodeIds.clear();
+  document.querySelectorAll('.mindmap-node').forEach(el => {
+    el.classList.remove('active');
+    el.classList.remove('selected');
+  });
+  sidebar.classList.remove('open');
+  updateSidebar();
+  renderMindMap();
+}
+
+function handleCanvasBackgroundClick(e) {
+  if (suppressCanvasBackgroundClick) {
+    suppressCanvasBackgroundClick = false;
+    return;
+  }
+  if (!isCanvasBackgroundTarget(e.target)) return;
+  hideContextMenu();
+  if (activeNodeId || selectedNodeIds.size > 0 || sidebar.classList.contains('open')) {
+    closeSidebarAndDeselect();
+  }
 }
 
 /**
@@ -1097,8 +1229,8 @@ function renderMindMap() {
     updateLayoutModeUI();
 
     if (isAppleWebKit) {
+      drawWebKitConnectionsCanvas();
       forceWebKitRepaint();
-      scheduleWebKitConnectionRedraw(generation);
     }
   };
 
@@ -1116,45 +1248,29 @@ function renderMindMap() {
  * Draw connection lines (Bézier curves)
  */
 function renderConnections(node) {
+  if (isAppleWebKit) {
+    if (node === mindMapData) {
+      drawWebKitConnectionsCanvas();
+    }
+    return;
+  }
+
   if (!node.children || node.children.length === 0 || node.collapsed) return;
 
   node.children.forEach(child => {
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('class', 'connection-path');
-    
-    // Determine path points
-    const startY = node.y;
-    const endY = child.y;
-    
-    let startX, endX, direction;
-    
-    if (node.id === 'root') {
-      direction = child.x > 0 ? 1 : -1;
-      startX = direction === 1 ? node.width / 2 : -node.width / 2;
-      endX = direction === 1 ? child.x - child.width / 2 : child.x + child.width / 2;
-    } else {
-      direction = child.x > node.x ? 1 : -1;
-      startX = direction === 1 ? node.x + node.width / 2 : node.x - node.width / 2;
-      endX = direction === 1 ? child.x - child.width / 2 : child.x + child.width / 2;
-    }
-    
-    // Calculate Bézier curve
-    const dx = Math.abs(endX - startX) * 0.5;
-    const pathData = `M ${startX} ${startY} C ${startX + direction * dx} ${startY}, ${endX - direction * dx} ${endY}, ${endX} ${endY}`;
-    
+
+    const seg = buildConnectionSegment(node, child);
+    const dx = Math.abs(seg.endX - seg.startX) * 0.5;
+    const pathData = `M ${seg.startX} ${seg.startY} C ${seg.startX + seg.direction * dx} ${seg.startY}, ${seg.endX - seg.direction * dx} ${seg.endY}, ${seg.endX} ${seg.endY}`;
+
     path.setAttribute('d', pathData);
-    path.setAttribute('stroke', child.branchColor || node.branchColor || '#89b4fa');
-    
-    // Line width gets thinner further from root
-    let strokeWidth = 3;
-    if (node.id === 'root') strokeWidth = 4;
-    else if (!child.children || child.children.length === 0) strokeWidth = 2;
-    
-    path.setAttribute('stroke-width', strokeWidth);
-    
+    path.setAttribute('stroke', seg.stroke);
+    path.setAttribute('stroke-width', seg.strokeWidth);
+
     connectionsGroup.appendChild(path);
-    
-    // Recurse children
+
     if (!child.collapsed) {
       renderConnections(child);
     }
@@ -1353,6 +1469,10 @@ function selectNode(id, isMulti = false) {
   // Open property panel sidebar
   if (activeNodeId) {
     sidebar.classList.add('open');
+    updateSidebar();
+  } else {
+    sidebar.classList.remove('open');
+    updateSidebar();
   }
   
   // Reset document scroll positions to block iOS Safari auto-scroll bug on value updates
@@ -1569,6 +1689,10 @@ function updateViewportTransform() {
 
   // Update UI Zoom Level indicator
   document.getElementById('zoom-level').textContent = `${Math.round(scale * 100)}%`;
+
+  if (isAppleWebKit) {
+    drawWebKitConnectionsCanvas();
+  }
 }
 
 function zoomTo(targetScale, mouseX = null, mouseY = null) {
@@ -1949,6 +2073,14 @@ function getStyledSVGPicture() {
   const shiftX = -minX + margin;
   const shiftY = -minY + margin;
   vp.setAttribute('transform', `translate(${shiftX}, ${shiftY})`);
+
+  // WebKit renders connections on canvas; inject paths for PNG/SVG export
+  if (isAppleWebKit) {
+    const connGroup = svgClone.querySelector('#connections-group');
+    if (connGroup && connGroup.childElementCount === 0) {
+      appendConnectionPathsToGroup(connGroup, collectConnectionSegments(mindMapData));
+    }
+  }
   
   // Update cloned SVG attributes
   svgClone.setAttribute('width', width);
@@ -2333,20 +2465,20 @@ function moveSelection(direction) {
 // --- Event Listeners and Initializers ---
 
 function setupEventListeners() {
-  // SVG zoom/pan dragging listeners
-  svg.addEventListener('mousedown', (e) => {
+  // Canvas zoom/pan dragging listeners (canvas-container captures clicks that miss svg on WebKit)
+  const onCanvasMouseDown = (e) => {
     hideContextMenu();
     if (e.target.closest('.node-toggle-svg')) return;
-    
+
     if (!e.target.closest('.mindmap-node')) {
       if (e.shiftKey || e.ctrlKey || e.metaKey) {
         isSelectingArea = true;
         isCanvasDragged = false;
-        
+
         const mouseSvg = getSvgCoordinates(e.clientX, e.clientY);
         selectionStartWorldX = mouseSvg.x;
         selectionStartWorldY = mouseSvg.y;
-        
+
         let selBox = document.getElementById('selection-box');
         if (!selBox) {
           selBox = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -2359,7 +2491,7 @@ function setupEventListeners() {
         selBox.setAttribute('width', 0);
         selBox.setAttribute('height', 0);
         selBox.style.display = 'block';
-        
+
         tempSelectedNodeIds.clear();
       } else {
         isDragging = true;
@@ -2371,7 +2503,9 @@ function setupEventListeners() {
         svg.style.cursor = 'grabbing';
       }
     }
-  });
+  };
+
+  canvasContainer.addEventListener('mousedown', onCanvasMouseDown);
 
   window.addEventListener('mousemove', (e) => {
     if (isSelectingArea) {
@@ -2537,14 +2671,9 @@ function setupEventListeners() {
     } else if (isDragging) {
       isDragging = false;
       svg.style.cursor = 'grab';
-      
-      // If mouse didn't drag but was just a click, deselect all and close sidebar
-      if (!isCanvasDragged) {
-        selectedNodeIds.clear();
-        activeNodeId = null;
-        sidebar.classList.remove('open');
-        updateSidebar();
-        renderMindMap();
+
+      if (isCanvasDragged) {
+        suppressCanvasBackgroundClick = true;
       }
       isCanvasDragged = false;
     } else if (dragNodeId) {
@@ -2668,24 +2797,7 @@ function setupEventListeners() {
   });
 
   // Canvas click to deselect node and close sidebar (if clicking bg)
-  svg.addEventListener('click', (e) => {
-    hideContextMenu();
-    if (!e.target.closest('.mindmap-node')) {
-      sidebar.classList.remove('open');
-      if (isCanvasDragged) {
-        isCanvasDragged = false;
-        return;
-      }
-      if (isEditing) finishEditing();
-      activeNodeId = null;
-      selectedNodeIds.clear();
-      document.querySelectorAll('.mindmap-node').forEach(el => {
-        el.classList.remove('active');
-        el.classList.remove('selected');
-      });
-      renderMindMap();
-    }
-  });
+  canvasContainer.addEventListener('click', handleCanvasBackgroundClick);
 
   // Global Keyboard Shortcuts
   window.addEventListener('keydown', (e) => {
@@ -3381,6 +3493,10 @@ const resizeObserver = new ResizeObserver((entries) => {
         lastSvgWidth = width;
         lastSvgHeight = height;
         updateViewportTransform();
+        if (isAppleWebKit) {
+          resizeConnectionsCanvas();
+          drawWebKitConnectionsCanvas();
+        }
       }
     }
   }
@@ -3408,6 +3524,11 @@ window.addEventListener('DOMContentLoaded', () => {
   applyTranslations();
 
   setupEventListeners();
+
+  if (isAppleWebKit) {
+    initWebKitConnectionsCanvas();
+    resizeConnectionsCanvas();
+  }
   
   // Render nodes initially
   renderMindMap();
