@@ -9,8 +9,11 @@ const TRANSLATIONS = {
   ja: {
     // Header
     "btn-new": "新規",
+    "btn-new-title": "新規作成",
     "btn-import": "開く",
+    "btn-import-title": "データを読み込む (.json)",
     "btn-export": "保存",
+    "btn-export-title": "データを保存する (.json)",
     "btn-export-dropdown-title": "エクスポートメニューを開く",
     "btn-export-dropdown": "エクスポート",
     "btn-export-png": "PNG画像",
@@ -106,8 +109,11 @@ const TRANSLATIONS = {
   en: {
     // Header
     "btn-new": "New",
+    "btn-new-title": "Create New",
     "btn-import": "Open",
+    "btn-import-title": "Load Data (.json)",
     "btn-export": "Save",
+    "btn-export-title": "Save Data (.json)",
     "btn-export-dropdown-title": "Open Export Menu",
     "btn-export-dropdown": "Export",
     "btn-export-png": "PNG Image",
@@ -3785,7 +3791,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Handle fallback version display if placeholder isn't replaced by build script
   const versionSpan = document.querySelector('.app-version');
   if (versionSpan && versionSpan.textContent.includes('__APP_VERSION__')) {
-    versionSpan.textContent = 'v0.12.6'; // Fallback value from tauri.conf.json
+    versionSpan.textContent = 'v0.12.7'; // Fallback value from tauri.conf.json
   }
 
   // Apply UI translations based on system language
